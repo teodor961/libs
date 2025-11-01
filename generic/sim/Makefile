@@ -59,6 +59,56 @@ clean:
 	
 gui:
 	$(eval GUI := 1)
+#####################################################################################
+## cdc_sync_handshake
+#####################################################################################
+xsim.dir/work/tb_cdc_sync_handshake.sdb: tb/tb_cdc_sync_handshake.sv
+	@echo -n "Compile testbench $(HL)tb_cdc_sync_handshake$(NC) ... "; 
+	@if xvlog -sv tb/tb_cdc_sync_handshake.sv > tb_cdc_sync_handshake_compile.log; then \
+	    echo " $(GREEN)OK$(NC)"; \
+	else \
+	    echo " $(RED)FAILED$(NC)"; \
+	    echo "For details see $(HL)$(CURDIR)/tb_cdc_sync_handshake_compile.log$(NC)"; \
+	    exit 1; \
+	fi;
+	
+xsim.dir/work/cdc_sync_handshake.sdb: ../rtl/cdc_sync_handshake.v
+	@echo -n "Compile module $(HL)cdc_sync_handshake$(NC) ... "
+	@if xvlog ../rtl/cdc_sync_handshake.v > cdc_sync_handshake_compile.log; then \
+		echo " $(GREEN)OK$(NC)"; \
+	else \
+	    echo " $(RED)FAILED$(NC)"; \
+	    echo "For details see $(HL)$(CURDIR)/cdc_sync_handshake_compile.log$(NC)"; \
+	    exit 1; \
+	fi;
+	
+elab_tb_cdc_sync_handshake: xsim.dir/work/cdc_sync_handshake.sdb xsim.dir/work/tb_cdc_sync_handshake.sdb
+	@echo -n "Elaborate $(HL)tb_cdc_sync_handshake$(NC) ... "
+	@if xelab --relax --debug all tb_cdc_sync_handshake > tb_cdc_sync_handshake_elab.log; then \
+	    echo " $(GREEN)OK$(NC)"; \
+	else \
+	    echo " $(RED)FAILED$(NC)"; \
+	    echo "For details see $(HL)$(CURDIR)/tb_cdc_sync_handshake_elab.log$(NC)"; \
+	    exit 1; \
+	fi;
+
+sim_tb_cdc_sync_handshake: clean elab_tb_cdc_sync_handshake
+	@echo -n "Run simulation for $(HL)tb_cdc_sync_handshake$(NC) ... "
+	@xsim tb_cdc_sync_handshake $(SIM_SWITCH) sim_tb_cdc_sync_handshake.tcl > tb_cdc_sync_handshake_sim.log
+	@if [ $(GUI) -eq "1" ]; then \
+		echo "LAUNCH WAVEFORM VIEWER"; \
+		xsim work.tb_cdc_sync_handshake.wdb --gui; \
+	fi;
+
+results_tb_cdc_sync_handshake: sim_tb_cdc_sync_handshake
+	@if [ $(file < result_cdc_sync_handshake.txt) -eq "0" ]; then \
+	    echo " $(GREEN)OK$(NC)"; \
+	    exit 0; \
+	else \
+	    echo " $(RED)FAILED$(NC)"; \
+	    echo "For details see $(HL)$(CURDIR)/tb_cdc_sync_handshake_sim.log$(NC)"; \
+	    exit 1; \
+	fi;
 
 #####################################################################################
 ## sync_fifo
@@ -111,7 +161,7 @@ results_tb_sync_fifo: sim_tb_sync_fifo
 	    exit 1; \
 	fi;
 #####################################################################################
-## ES FIR FILTER
+## FIR FILTER
 #####################################################################################
 xsim.dir/work/tb_fir_generic.sdb: tb/tb_fir_generic.sv
 	@echo -n "Compile testbench $(HL)tb_fir_generic$(NC) ... "; 
@@ -162,7 +212,7 @@ results_tb_fir_generic: sim_tb_fir_generic
 	fi;
 
 #####################################################################################
-## ES ADDER
+## ADDER
 #####################################################################################
 xsim.dir/work/tb_safe_adder.sdb: tb/tb_safe_adder.sv
 	@echo -n "Compile testbench $(HL)tb_safe_adder$(NC) ... "; 
@@ -213,7 +263,7 @@ results_tb_safe_adder: sim_tb_safe_adder
 	fi;
 	
 #####################################################################################
-## ES MULT
+## MULT
 #####################################################################################
 xsim.dir/work/tb_safe_mult.sdb: tb/tb_safe_mult.sv
 	@echo -n "Compile testbench $(HL)tb_safe_mult$(NC) ... "; 
