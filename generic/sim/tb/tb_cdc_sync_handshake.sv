@@ -16,43 +16,35 @@ module tb_cdc_sync_handshake (
 
 );
 
+parameter DATA_WIDTH = 8;
+
 logic  rst;
-logic  clk;
-
-logic [7:0] tb_wr_data;
-logic       tb_wr_en;
-logic       tb_prog_full;
-logic       tb_full;
-
-logic [7:0] tb_rd_data;
-logic       tb_rd_en;
-logic       tb_empty;
-
-// testbench control logic
-typedef enum {READ=0, WRITE=1} rd_wr_state_t;
-
-rd_wr_state_t STATE; // 0 = WRITE/1 = READ
+logic  tb_clk_src;
+logic  tb_clk_dest;
 
 logic [31:0] error_count = 0;
 
 // Test signals
-enum {IDLE, SENDING} send_state;
-enum {IDLE, RECEIVING} receive_state;
+typedef enum {IDLE_SEND, SENDING} send_state_t;
+typedef enum {IDLE_RECEIVE, RECEIVING, WAIT_REQ_DROP} receive_state_t;
+
+send_state_t send_state;
+receive_state_t receive_state;
 
 logic [DATA_WIDTH-1:0] tb_data_in = 0;
-logic                  tb_req_in;
+logic                  tb_req_in = 0;
 logic                  tb_ack_in;
 
 logic [DATA_WIDTH-1:0] tb_data_out;
+logic [DATA_WIDTH-1:0] tb_data_clean;
 logic                  tb_req_out;
-logic                  tb_ack_out
+logic                  tb_ack_out = 0;
 
 parameter SRC_CLK_PERIOD = 50;
 parameter DEST_CLK_PERIOD = 63;
 
     cdc_sync_handshake  #(
-            .DATA_WIDTH   (8),
-            .BUFFER_DEPTH (10)
+            .DATA_WIDTH   (DATA_WIDTH)
     ) inst_cdc_sync_handshake (
             .clk_src   (tb_clk_src),
             .clk_dest  (tb_clk_dest),
@@ -90,7 +82,7 @@ initial
 always @(posedge tb_clk_src)
   begin
       case (send_state)
-        IDLE: 
+        IDLE_SEND: 
             begin
                 if (tb_ack_in)
                   begin
@@ -99,21 +91,21 @@ always @(posedge tb_clk_src)
                 else
                   begin
                       tb_data_in <= tb_data_in + 1;
-			  tb_req_in  <= 1'b1;
-			  send_state <= SENDING;
+                      tb_req_in  <= 1'b1;
+		              send_state <= SENDING;
                   end
             end
-	SENDING:
-            begin:
+	    SENDING:
+            begin
                 if (tb_ack_in)
                   begin
-                      tb_req_in <= 1'b1;
+                      tb_req_in  <= 1'b0;
+			          send_state <= IDLE_SEND;
                   end
-		    else
-		      begin
-                      tb_req_in <= 1'b0;
-			    send_state <= IDLE;
-		      end
+		        else
+		          begin
+                      tb_req_in <= 1'b1;
+		          end
             end
       endcase
   end
@@ -122,7 +114,7 @@ always @(posedge tb_clk_src)
 always @(posedge tb_clk_dest)
   begin
       case (receive_state)
-        IDLE:
+        IDLE_RECEIVE:
           begin
               if (tb_req_out)
                 begin
@@ -133,8 +125,15 @@ always @(posedge tb_clk_dest)
           end
         RECEIVING:
           begin
-              receive_state <= IDLE;
-              tb_ack_out    <= 1'b0;
+              receive_state <= WAIT_REQ_DROP;
+          end
+        WAIT_REQ_DROP:
+          begin
+              if (tb_req_out == 0)
+                begin
+                    receive_state <= IDLE_RECEIVE;
+                    tb_ack_out <= 1'b0;
+                end
           end
       endcase
   end

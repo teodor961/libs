@@ -12,7 +12,7 @@
 //
 // TODO: Create handshake synchronizer to replace 2 flop sync - 2 flop sync wont work for crossing faster to slower clock domain...
 
-module cdc_sync_handshake (
+module cdc_sync_handshake #(
       parameter DATA_WIDTH = 1
      ) (
      input  clk_src,                    // Sending clock domain
@@ -27,11 +27,11 @@ module cdc_sync_handshake (
      input                    out_ack
 );
 
-reg r1_req;
-reg r2_req;
+reg r1_req = 0;
+reg r2_req = 0;
 
-reg r1_ack;
-reg r2_ack;
+reg r1_ack = 0;
+reg r2_ack = 0;
 
     always @(posedge clk_dest)
       begin
@@ -47,5 +47,7 @@ reg r2_ack;
 
     assign out_req = r2_req;
     assign in_ack = r2_ack;
+
+    assign out_data = in_data;
 
 endmodule
